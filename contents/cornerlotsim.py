@@ -4,8 +4,11 @@ from matplotlib import pyplot as plt
 from utils import CornerLot
 
 
-st.set_page_config("Corner Lot Sim", layout="wide")
-st.title("Corner Lot Simulation")
+st.markdown(
+    """
+    ### Corner Lot Simulation
+    """
+)
 
 
 result_file = st.file_uploader("Monte Calro Result", type="csv")
@@ -31,7 +34,7 @@ if st.button("Plot Failure Rate", width="stretch"):
         with st.spinner("Calculating..."):
             cornerlot.load(result_file, spec_file, is_mont=is_mont)
             cornerlot.filter(fmin, fmax, spec_words_to_exclude)
-            fig, axes = cornerlot.get_failure_rate_figure()
+            fig, axes = cornerlot.plot_failure_rate()
             st.pyplot(plt)  # type: ignore
     else:
         if not result_file:

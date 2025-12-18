@@ -17,7 +17,13 @@ class CornerLot:
     def load(self, result_file, spec_file, is_mont: bool = True):
         # Specの読み込み
         self.spec = Spec(spec_file)
+
+        # バンドの識別
+        # Spec名の最後のセクションがバンド名になっている
         self.spec.df['band'] = self.spec.df.index.str.rsplit('_').str[-1]
+        # B から始まる文字以外が含まれている = シングルバンド
+        if (~self.spec.df['band'].str.startswith('B')).any():
+            self.spec.df["band"] = "ANY"
 
         # リザルトファイルの読み込み
         if is_mont:
@@ -63,12 +69,13 @@ class CornerLot:
                fstart: float | None = None,
                fstop: float | None = None,
                words_to_exlude: list[str] | None = None):
-        self.spec.filter(fstart=fstart, fstop=fstop,
+        self.spec.filter(fstart=fstart,
+                         fstop=fstop,
                          words_to_exlude=words_to_exlude)
         self.df_raw = self.sync(self.df_raw)
         self.df_judge = self.sync(self.df_judge)
 
-    def get_failure_rate_figure(self):
+    def plot_failure_rate(self):
         bands = self.spec.df['band'].unique()
         n_bands = len(bands)
 
@@ -82,13 +89,13 @@ class CornerLot:
         # バンドごとに描画
         for band, ax in zip(bands, axes):
             # バンドの選択
-            df = self.spec.df[self.spec.df.index.str.contains(band)]
+            df = self.spec.df[self.spec.df["band"] == band]
 
             # Failした項目を抽出
             df = df[df["failrate"] > 0]
 
             if not len(df):
-                print(f"No failed entry for {band}")
+                # print(f"No failed entry for {band}")
                 continue
 
             # ソート
@@ -126,5 +133,5 @@ if __name__ == "__main__":
     cornerlot = CornerLot()
     cornerlot.load(result_csv, spec_csv, is_mont=is_mont)
     cornerlot.filter(freq_range[0], freq_range[1], spec_words_to_exlude)
-    cornerlot.get_failure_rate_figure()
+    cornerlot.plot_failure_rate()
     plt.show()
