@@ -1,16 +1,18 @@
+import pandas as pd
 import streamlit as st
-from matplotlib import pyplot as plt
 from utils import rsm
 
 
 st.markdown(
     """
+    ---
     ### Pitch Profile
+    ---    
     """
 )
 
 
-if False:
+if True:
     newline = "\r\n"
     file = st.file_uploader("rsm File", type="rsm")
     if not file:
@@ -22,21 +24,47 @@ else:
     with open(file, encoding="utf-8") as f:
         text = f.read()
 
+cols = st.columns(2)
+with cols[0]:
+    mm_conv = st.toggle("MM Conversion", value=True)
+with cols[1]:
+    rsm_download = st.empty()
+
+
 headers, profile = rsm.split(text, newline=newline)
 exp_profile = rsm.expand(profile)
-mm_profile = rsm.convert_MM(exp_profile)
+if mm_conv:
+    exp_profile = rsm.convert_MM(exp_profile)
+    mm_rsm = rsm.reconstruct_rsm(headers, exp_profile)
+    rsm_download.download_button(
+        ":material/download: MM rsm",
+        data=mm_rsm,
+        file_name=f"MM_test.rsm",
+        mime="text/plain",
+    )
 
-mm_rsm = rsm.reconstruct_rsm(headers, mm_profile)
-st.download_button(
-    ":material/download: MM rsm",
-    data=mm_rsm,
-    file_name=f"MM_test.rsm",
-    mime="text/plain",
-)
+tracks = rsm.divide_into_tracks(exp_profile)
 
-rsm.plot_profile(mm_profile)
+# Polarity
+left = st.segmented_control("First IDT Polarity", ["HOT", "GND"], default="HOT")
+df = rsm.generate_polarity_data(tracks, left)  # type: ignore
+st.markdown("**Polarity**")
+st.dataframe(df)
 
-# st.write(headers)
-# st.write(profile)
-# st.write(exp_profile)
-# st.write(mm_rsm)
+
+# Pitch profile
+fig = rsm.plot_pitch_profile(tracks)
+st.plotly_chart(fig)
+
+
+# Gradation ratio
+names = [tr.name for tr in tracks]
+grads = [tr.calc_grad_ratio() for tr in tracks]
+max_grad = max(grads)
+max_track_name = names[grads.index(max_grad)]
+data = {name: f"{gr:.1%}" for name, gr in zip(names, grads)}
+df = pd.DataFrame([data])
+st.markdown("**Pitch modulation**")
+st.caption("modulation = 1 - min(L)/max(L)")
+st.dataframe(df)
+st.markdown(f"Max = {max_grad:.1%} ({max_track_name})")
